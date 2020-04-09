@@ -1,0 +1,35 @@
+1- fix_pdb.sh
+	It modifies the pdb file coming from ARM:
+	-Identifies the bonded LYS
+	-Modifies the RET section in the pdb
+	-modifies some labels, waters …
+	-define the labels of the HISs
+2- New_mod.sh
+	-It determines the total charge of the system
+	-Selects the proper parametrization of the retinal
+	-If seqmut file found, the corresponding mutations are performed.
+3- Init_ASEC.sh
+	It creates the Dynamic folder and configure all the needed files to run the MD in GROMACS.
+	-Based on the previous selection it loads the proper parametrization of the Retinal.
+	-There you will define if embedding or not the system in a Solvent box.
+	if no solvent box:
+4- DynIt_list_chromo.sh
+	Here you will define the parameters for the MD, like:
+	- relaxing or not the backbone
+	- the size of the cavity to be relaxed during the MD
+	- Also the script submission is generated and submited.
+5- MD_ASEC.sh
+	In this script the 100 uncorrelated configurations are selected from the MD run, then from each configurations 	a 30A shell is selected for generating afterwards the ASEC configuration. At the beginning of the script two 	templates fila are created to convert configurations from gromacs to tinker and from tinker to gromacs when 	needed afterward.
+6- MD_2_ASEC.sh
+	Initially, a section devoted to the case of using solvent box is found, then a section for the system in 	vacuum. Basically, the script selects a single configuration from gromacs which is converted to MOLCAS-TINKER 	format and some options are fong like:
+	- Optimize the system starting from SCF or start directly from CASSCF
+	- Optimize TS or a minimum structure.
+7- Molcami_SP.sh
+	Here the calculation folder is created and all the necessary files for the QM/MM calculation (like 		the .key .xyz .input and parameters) are created.
+8- ASEC_SP.sh
+	In this script the ASEC configuration is ASEC configuration is finally created and inserted into the .xyz 	file. The parameter file is also updated to considered all the ASEC pseudoatoms. Then, the submission script 	is created and submitted. Initially a Single point calculations is performed in order to check the active 	space of the CASSCF calculation. Then, the script “sp_to_opt_631G_mod.sh” submits the QM/MM geometry 		optimization.  
+9- finalPDB_mod.sh
+	When the Opt QM/MM optimization is done, this script is designed to convert the final optimized structure from	 MOLCAS-TINKER to PDB format. In addition it ask you if you want to recompute the RESP charges of the Retinal 	to be used in the next MD (in the next step of the free energy optimization).
+10- Update_chromo.sh
+	Using the optimized structure of the chromophore and the new charges it collect all the needed data to start a 	new Step (it means new MD and QM/MM).
+   
