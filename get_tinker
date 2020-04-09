@@ -1,0 +1,105 @@
+#!/bin/sh
+# $Revision: 7.8 $ 
+
+TINKERVERSION='tinker-5.1.9'
+
+if [ -z "$MOLCAS" ]; then
+  echo Molcas is not defined.
+  exit 1
+fi
+cd $MOLCAS
+if [ -d $TINKERVERSION ]; then
+  echo Original $TINKERVERSION already installed.
+else
+  if [ -h tinker ]; then 
+    rm -f tinker
+  elif [ -d tinker ]; then
+    echo Assuming the tinker directory is an old version.
+    echo Rename it to tinker.old and download a newer version.
+    mv -f tinker tinker.old
+  elif [ -a tinker ]; then
+    echo Cannot determine what tinker is. 
+    echo Please correct it manually before to run get_tinker again.
+    exit 1
+  else
+    echo Downloading $TINKERVERSION
+  fi
+  wget  http://dasher.wustl.edu/tinker/downloads/$TINKERVERSION.tar.gz
+  gzip -d $TINKERVERSION.tar.gz
+  tar -xf $TINKERVERSION.tar
+  if [ $? != 0 ]; then
+    echo Unpacking Tinker failed.
+    exit 1
+  fi
+  mv -f tinker $TINKERVERSION
+##### Yoe
+  cd $TINKERVERSION/source
+  sed -i "s/maxatm=25000/maxatm=999999/" sizes.i
+  cd ../../
+#####
+  ln -fs $TINKERVERSION tinker
+  echo The tinker symbolic link has been set to $TINKERVERSION
+fi
+
+cd tinker/source
+if [ -f tk_for_qmmm.diff ]; then
+  mv -f tk_for_qmmm.diff tk_for_qmmm.diff.old
+fi
+#wget http://sites.univ-provence.fr/lcp-ct/ferre/tk_for_qmmm.diff
+cp PATCH_FOLDER/tk_for_qmmm.diff .
+sed -i "s/+   40 format ('TKOnlyMM    ',i5)/+   40 format ('TKOnlyMM    ',i6)/g" tk_for_qmmm.diff
+sed -i "s/+  140       format ('TKOnlyMM    ',i5)/+  140       format ('TKOnlyMM    ',i6)/g" tk_for_qmmm.diff
+if [ -f tk_for_qmmm.diff.old ]; then
+   a=`diff tk_for_qmmm.diff.old tk_for_qmmm.diff |wc -l`
+else
+   a=1
+fi
+if [ $a != 0 ]; then
+  if [ -f tk_for_qmmm.diff.old ]; then
+     mv -f Makefile Makefile.old
+     patch -R <tk_for_qmmm.diff.old
+  fi
+  patch <tk_for_qmmm.diff
+  if [ $? != 0 ]; then
+    echo Patching failed. Check that you have patch installed.
+    exit 1
+  fi
+else
+  echo $TINKERVERSION already patched.
+  exit 1
+fi
+
+echo Modifying Tinker Makefile.
+
+perl <<EDIT
+open(IN,"<Makefile");
+open(UT,">Makefile.new");
+\$this=0;
+ while(\$line=<IN>)
+  {
+   \$line="TINKERDIR=$MOLCAS/tinker\n" if(\$line=~/^TINKERDIR/);
+   if(\$line=~/^F77 =/) {\$this=-1};
+   if(\$line=~/#F77 = \/usr\/bin\/gfortran/) {\$this=1;}
+   if(\$line=~/##/) {\$this=0;}
+   if(\$this==1) { \$line=~s/^#//;}
+   if(\$this==-1) { \$line='#'.\$line;}
+   print UT \$line;
+  }
+EDIT
+
+
+mv Makefile Makefile.orig
+mv Makefile.new Makefile
+rm -f Makefile.old
+
+if [ ! -d ../bin_qmmm ]; then
+   mkdir  ../bin_qmmm
+fi
+
+echo 'Now relax and think how is it possible to write a code'
+echo 'which compile for such a long time.'
+##### Yoe
+  sed -i "s/F77FLAGS = -c/F77FLAGS = -c -mcmodel=large/" Makefile
+#####
+make all
+make rename
